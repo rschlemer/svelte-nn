@@ -1,9 +1,8 @@
 <script lang="ts">
-  import { onMount } from "svelte";
-  import * as d3 from "d3";
+  import { weight1, weight2, data } from "./store";
   import Slider from "./lib/Slider.svelte";
   import Chart from "./lib/Chart.svelte";
-  import { weight1, weight2, data } from "./store";
+  import LineChart from "./lib/LineChart.svelte";
 </script>
 
 <main class="max-w-screen-xl m-auto">
@@ -14,4 +13,5 @@
       <Slider value={$weight2} />
     </div>
   </div>
+  <LineChart />
 </main>
