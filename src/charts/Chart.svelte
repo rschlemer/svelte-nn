@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { scaleLinear } from "d3-scale";
   import { select } from "d3-selection";
+  import LineChart from "./LineChart.svelte";
 
   export let data: Array<Object>;
 
@@ -42,10 +43,11 @@
           cx={xScale(d.inputs[0])}
           cy={yScale(d.inputs[1])}
           r={5}
-          fill={d.expectedOutputs[0] > 0 ? "red" : "blue"}
+          fill={d.expectedOutputs[0] > 0 ? "blue" : "red"}
           in:reveal={{ duration: 1000 }}
         />
       {/each}
+      <LineChart />
     </svg>
   {/if}
 </div>
