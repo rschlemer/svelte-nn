@@ -1,22 +1,12 @@
 <script>
     import { scaleLinear } from "d3-scale";
-    import { area } from "d3-shape";
+    import { area, line } from "d3-shape";
     import Axis from "./Axis.svelte";
     import ScatterPlot from "./ScatterPlot.svelte";
     import temp_data from "../assets/data_test.json";
+    import { lineData } from "../store";
 
     let data = temp_data.temp_data;
-
-    // line function
-    function f(x) {
-        return (225 - x * x) ** (1 / 2);
-        // return (-2 * x) / 3 + 10;
-    }
-
-    let lineData = [];
-    for (let i = 0; i < 31; i++) {
-        lineData.push({ x: i * 0.5, y: f(i * 0.5) });
-    }
 
     const margin = {
         top: 50,
@@ -58,7 +48,7 @@
         <text
             class="stroke-zinc-200"
             x={margin.left + 25}
-            y={innerHeight + margin.top + 35}>Spot Size</text
+            y={innerHeight + margin.top + 35}>Spot Size →</text
         >
 
         <!-- Left Axis -->
@@ -67,12 +57,13 @@
             class="stroke-zinc-200"
             transform={`translate(${margin.left - 25},${
                 innerHeight + margin.top - 25
-            }) rotate(-90)`}>Spike Length</text
+            }) rotate(-90)`}>Spike Length →</text
         >
 
-        <path class="pathArea" d={path(lineData)} />
+        <path class="pathArea" d={path($lineData)} />
     </svg>
 </div>
+<br />
 
 <style>
     .pathArea {

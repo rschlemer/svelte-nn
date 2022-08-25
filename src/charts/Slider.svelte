@@ -5,6 +5,7 @@
 
     let div;
     export let value;
+    export let store;
     const slider = sliderBottom()
         .min(-1)
         .max(1)
@@ -13,6 +14,7 @@
         .default(value)
         .on("onchange", (v) => {
             value = v;
+            store.update((x) => v);
         });
 
     onMount(() => {
@@ -29,4 +31,3 @@
 </script>
 
 <div bind:this={div} />
-<p>{value}</p>
