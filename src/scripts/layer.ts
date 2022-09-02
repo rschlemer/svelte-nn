@@ -1,61 +1,95 @@
+import { Sigmoid, type IActivation } from "./activation";
+import type { LayerLearnData } from "./neural-network";
+
 export class Layer {
     numNodesIn: number;
     numNodesOut: number;
-    weights: Array<number>;
-    biases: Array<number>;
+    weights: number[];
+    biases: number[];
 
-    costGradientWeights: Array<number>;
-    costGradientBiases: Array<number>;
+    costGradientWeights: number[];
+    costGradientBiases: number[];
 
-    weightVelocities: Array<number>;
-    biasVelocities: Array<number>;
+    weightVelocities: number[];
+    biasVelocities: number[];
+
+    activation: IActivation;
 
     constructor(numNodesIn: number, numNodesOut: number) {
         this.numNodesIn = numNodesIn;
         this.numNodesOut = numNodesOut;
-        this.initializeRandomWeights();
+        this.activation = new Sigmoid();
 
-        // create starting weights and biases between -1 and 1
-        // weights is a 2d array with number of input nodes as rows and 
-        // number of output nodes as columns
-        // biases is a 1d array with length equal to the number of output nodes
-        // this.weights = [...Array(numNodesIn)].map(
-        //     () => Array.from(
-        //         { length: numNodesOut },
-        //         () => Math.random() * 2 - 1)
-        // );
-        // this.biases = Array.from(
-        //     { length: numNodesOut },
-        //     () => Math.random() * 2 - 1
-        // );
+        this.weights = Array(numNodesIn * numNodesOut);
+        this.costGradientWeights = Array(this.weights.length);
+        this.biases = Array(numNodesOut);
+        this.costGradientBiases = Array(this.biases.length);
+
+        this.weightVelocities = Array(this.weights.length);
+        this.biasVelocities = Array(this.biases.length);
+
+        this.initializeRandomWeights();
     }
 
-    calculateOutputs(inputs: Array<number>): Array<number> {
-        let activations = [this.numNodesOut];
+    calculateOutputs(inputs: number[]): number[] {
+        let weightedInputs = Array(this.numNodesOut);
+
+
         for (let nodeOut = 0; nodeOut < this.numNodesOut; nodeOut++) {
             let weightedInput = this.biases[nodeOut];
+
             for (let nodeIn = 0; nodeIn < this.numNodesIn; nodeIn++) {
-                weightedInput += inputs[nodeIn] * this.weights[nodeIn][nodeOut];
+                weightedInput += inputs[nodeIn] * this.getWeight(nodeIn, nodeOut);
             }
-            activations[nodeOut] = this.activationFunction(weightedInput);
+            weightedInputs[nodeOut] = weightedInput;
         }
+
+        let activations = Array(this.numNodesOut);
+
+        for (let outputNode = 0; outputNode < this.numNodesOut; outputNode++) {
+            activations[outputNode] = this.activation.activate(weightedInputs, outputNode);
+        }
+
         return activations;
     }
 
-    // CalculateOutputLayerNodeValues(expectedOutputs: Array<number>): Array<number> {
-    //     const nodeValues = Array(expectedOutputs.length);
+    calculateOutputsLearn(inputs: number[], learnData: LayerLearnData) {
+        learnData.inputs = inputs;
 
-    //     for (let i = 0; i < nodeValues.length; i++) {
-    //         const costDerivative = this.NodeCostDerivative(this.activations[i], expectedOutputs[i]);
-    //         const activationDerivatitve = this.ActivationDerivative(this.weightedInputs[i]);
-    //         nodeValues[i] = costDerivative * activationDerivatitve;
-    //     }
-    //     return nodeValues;
-    // }
+        for (let nodeOut = 0; nodeOut < this.numNodesOut; nodeOut++) {
+            let weightedInput = this.biases[nodeOut];
+            for (let nodeIn = 0; nodeIn < this.numNodesIn; nodeIn++) {
+                weightedInput += inputs[nodeIn] * this.getWeight(nodeIn, nodeOut);
+            }
+            learnData.weightedInputs[nodeOut] = weightedInput;
+        }
 
-    // CalculateHiddenLayerNodeValues() {
+        for (let i = 0; i < learnData.activations.length; i++) {
+            learnData.activations[i] = this.activation.activate(learnData.weightedInputs, i);
+        }
+        return learnData.activations;
+    }
 
-    // }
+    calculateOutputLayerNodeValues(layerLearnData: LayerLearnData, expectedOutputs: number[], cost: any): void {
+        for (let i = 0; i < layerLearnData.nodeValues.length; i++) {
+            const costDerivative = cost.CostDerivative(layerLearnData.activations[i], expectedOutputs[i]);
+            const activationDerivatitve = this.activation.derivative(layerLearnData.weightedInputs, i);
+            layerLearnData.nodeValues[i] = costDerivative * activationDerivatitve;
+        }
+
+    }
+
+    calculateHiddenLayerNodeValues(layerLearnData: LayerLearnData, oldLayer: Layer, oldNodeValues: number[]) {
+        for (let newNodeIndex = 0; newNodeIndex < this.numNodesOut; newNodeIndex++) {
+            let newNodeValue = 0;
+            for (let oldNodeIndex = 0; oldNodeIndex < oldNodeValues.length; oldNodeIndex++) {
+                let weightedInputDerivative = oldLayer.getWeight(newNodeIndex, oldNodeIndex);
+                newNodeValue += weightedInputDerivative * oldNodeValues[oldNodeIndex];
+            }
+            newNodeValue *= this.activation.derivative(layerLearnData.weightedInputs, newNodeIndex);
+            layerLearnData.nodeValues[newNodeIndex] = newNodeValue;
+        }
+    }
 
     applyGradients(learnRate: number, regularization: number, momentum: number): void {
         const weightDecay: number = (1 - regularization * learnRate);
@@ -77,33 +111,28 @@ export class Layer {
         }
     }
 
-    // UpdateGradients(nodeValues: Array<number>): void {
-    //     for (let nodeOut = 0; nodeOut < this.numNodesOut; nodeOut++) {
-    //         for (let nodeIn = 0; nodeIn < this.numNodesIn; nodeIn++) {
-    //             const derivativeCostWeight = this.inputs[nodeIn] * nodeValues[nodeOut];
-    //             this.costGradientWeights[nodeIn][nodeOut] += derivativeCostWeight;
-    //         }
-    //         const derivativeCostBias = 1 * nodeValues[nodeOut];
-    //         this.costGradientBiases[nodeOut] = derivativeCostBias;
-    //     }
-    // }
+    updateGradients(layerLearnData: LayerLearnData): void {
+        for (let nodeOut = 0; nodeOut < this.numNodesOut; nodeOut++) {
+            let nodeValue = layerLearnData.nodeValues[nodeOut];
 
-    activationFunction(weightedInput: number): number {
-        return 1 / (1 + Math.exp(weightedInput));
+            for (let nodeIn = 0; nodeIn < this.numNodesIn; nodeIn++) {
+                const derivativeCostWeight = layerLearnData.inputs[nodeIn] * nodeValue;
+                this.costGradientWeights[this.getFlatWeightIndex(nodeIn, nodeOut)] += derivativeCostWeight;
+            }
+
+            const derivativeCostBias = 1 * layerLearnData.nodeValues[nodeOut];
+            this.costGradientBiases[nodeOut] += derivativeCostBias;
+        }
     }
 
-    activationDerivative(weightedInput: number): number {
-        const activation = this.activationFunction(weightedInput);
-        return activation * (1 - activation);
+
+    getWeight(nodeIn: number, nodeOut: number) {
+        let flatIndex = nodeOut * this.numNodesIn + nodeIn;
+        return this.weights[flatIndex];
     }
 
-    nodeCost(outputActivation: number, expectedOutput: number): number {
-        const error = outputActivation - expectedOutput;
-        return error * error;
-    }
-
-    nodeCostDerivative(outputActivation: number, expectedOutput: number): number {
-        return 2 * (outputActivation - expectedOutput);
+    getFlatWeightIndex(inputNeuronIndex: number, outputNeuronIndex: number) {
+        return outputNeuronIndex * this.numNodesIn + inputNeuronIndex;
     }
 
     initializeRandomWeights() {
