@@ -1,11 +1,12 @@
 import { Layer } from './layer';
 import type { DataPoint } from './data-point';
+import { type ICost, MeanSquareError } from './cost';
 
 export class NeuralNetwork {
     layers: Layer[];
     layerSizes: number[];
 
-    cost: any;
+    cost: ICost;
 
     batchLearnData: NetworkLearnData[];
 
@@ -15,6 +16,7 @@ export class NeuralNetwork {
         for (let i = 0; i < this.layers.length; i++) {
             this.layers[i] = new Layer(this.layerSizes[i], this.layerSizes[i + 1]);
         }
+        this.cost = new MeanSquareError();
     }
 
     calculateOutputs(inputs: number[]): number[] {
